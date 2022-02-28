@@ -183,23 +183,21 @@ class RandLANet(BaseModel):
         feat = data['feat'].copy() if data['feat'] is not None else None
         tree = data['search_tree']
 
-        # pc, selected_idxs, center_point = self.trans_point_sampler(
-        #     pc=pc,
-        #     feat=feat,
-        #     label=label,
-        #     search_tree=tree,
-        #     num_points=self.cfg.num_points)
-
-        # TODO: ここを変えるとfeatureのサイズが変わるが...
-        # num_point = pc.shape[0]
-        # num_point = self.inference_ori_data['point'].shape[0]
-        # print('num_point', num_point)
         pc, selected_idxs, center_point = self.trans_point_sampler(
             pc=pc,
             feat=feat,
             label=label,
             search_tree=tree,
-            num_points=self.raw_points_num)
+            num_points=self.cfg.num_points)
+
+        # TODO: ここを変えるとfeatureのサイズが変わるが...
+
+        # pc, selected_idxs, center_point = self.trans_point_sampler(
+        #     pc=pc,
+        #     feat=feat,
+        #     label=label,
+        #     search_tree=tree,
+        #     num_points=self.raw_points_num)
       
 
         label = label[selected_idxs]

@@ -163,24 +163,24 @@ class SemanticSegmentation(BasePipeline):
             for unused_step, inputs in enumerate(infer_loader):
                 results, features = model(inputs['data'])
                 # print(features)
-                # self.update_tests(infer_sampler, inputs, results)
+                self.update_tests(infer_sampler, inputs, results)
 
         inference_result = {
-            # 'predict_labels': self.ori_test_labels.pop(),
-            # 'predict_scores': self.ori_test_probs.pop(),
-            'features': features
+            'predict_labels': self.ori_test_labels.pop(),
+            'predict_scores': self.ori_test_probs.pop(),
+            'features': features,
         }
 
-        # metric = SemSegMetric()
+        metric = SemSegMetric()
 
-        # valid_scores, valid_labels = filter_valid_label(
-        #     torch.tensor(inference_result['predict_scores']),
-        #     torch.tensor(data['label']), model.cfg.num_classes,
-        #     model.cfg.ignored_label_inds, device)
+        valid_scores, valid_labels = filter_valid_label(
+            torch.tensor(inference_result['predict_scores']),
+            torch.tensor(data['label']), model.cfg.num_classes,
+            model.cfg.ignored_label_inds, device)
 
-        # metric.update(valid_scores, valid_labels)
-        # log.info(f"Accuracy : {metric.acc()}")
-        # log.info(f"IoU : {metric.iou()}")
+        metric.update(valid_scores, valid_labels)
+        log.info(f"Accuracy : {metric.acc()}")
+        log.info(f"IoU : {metric.iou()}")
 
         return inference_result
 
