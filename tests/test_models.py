@@ -18,17 +18,11 @@ if gpus:
     except RuntimeError as e:
         print(e)
 
-try:
-    from open3d.ml.torch.models import OpenVINOModel
-    openvino_available = True
-except:
-    openvino_available = False
-
 
 def test_randlanet_torch():
     import open3d.ml.torch as ml3d
 
-    net = ml3d.models.RandLANet(num_points=5000, num_classes=10, in_channels=6)
+    net = ml3d.models.RandLANet(num_points=5000, num_classes=10, dim_input=6)
     net.device = 'cpu'
 
     data = {
@@ -45,12 +39,9 @@ def test_randlanet_torch():
     data = net.preprocess(data, attr)
     inputs = net.transform(data, attr)
     inputs = {
-        'coords': [
-            torch.from_numpy(np.array([item])) for item in inputs['coords']
-        ],
-        'neighbor_indices': [
-            torch.from_numpy(np.array([item]))
-            for item in inputs['neighbor_indices']
+        'xyz': [torch.from_numpy(np.array([item])) for item in inputs['xyz']],
+        'neigh_idx': [
+            torch.from_numpy(np.array([item])) for item in inputs['neigh_idx']
         ],
         'sub_idx': [
             torch.from_numpy(np.array([item])) for item in inputs['sub_idx']
@@ -95,15 +86,9 @@ def test_randlanet_tf():
     for i in range(18):  # num_layers * 4 + 2
         inputs[i] = tf.expand_dims(inputs[i], 0)
 
-    out = net(inputs, training=False).numpy()
+    out = net(inputs).numpy()
 
     assert out.shape == (1, 5000, 10)
-
-    if openvino_available:
-        ov_net = ml3d.models.OpenVINOModel(net)
-        ov_out = ov_net(inputs)
-        assert ov_out.shape == out.shape
-        assert np.max(np.abs(ov_out - out)) < 1e-6
 
 
 def test_kpconv_torch():
@@ -130,24 +115,13 @@ def test_kpconv_torch():
     data = net.preprocess(data, attr)
     inputs = {'data': net.transform(data, attr), 'attr': attr}
     inputs = batcher.collate_fn([inputs])
-
-    net.eval()
     out = net(inputs['data']).detach().numpy()
 
     assert out.shape[1] == 5
 
-    if openvino_available:
-        ov_net = ml3d.models.OpenVINOModel(net)
-        ov_net.to("cpu")
-        ov_out = ov_net(inputs['data']).detach().numpy()
-        assert ov_out.shape == out.shape
-        assert np.max(np.abs(ov_out - out)) < 1e-7
-
 
 def test_kpconv_tf():
     import open3d.ml.tf as ml3d
-
-    np.random.seed(32)
 
     net = ml3d.models.KPFCNN(lbl_values=[0, 1, 2, 3, 4, 5],
                              num_classes=4,
@@ -184,12 +158,6 @@ def test_kpconv_tf():
 
     assert out.shape == (1000, 5)
 
-    if openvino_available:
-        ov_net = ml3d.models.OpenVINOModel(net)
-        ov_out = ov_net(inputs)
-        assert ov_out.shape == out.shape
-        assert np.max(np.abs(ov_out - out)) < 1e-5
-
 
 def test_pointpillars_torch():
     import open3d.ml.torch as ml3d
@@ -215,14 +183,6 @@ def test_pointpillars_torch():
         results = net(data)
         boxes = net.inference_end(results, data)
         assert type(boxes) == list
-
-    if openvino_available:
-        ov_net = ml3d.models.OpenVINOModel(net)
-        ov_results = ov_net(data)
-
-        for out, ref in zip(ov_results, results):
-            assert out.shape == ref.shape
-            assert torch.max(torch.abs(out - ref)) < 1e-5
 
 
 def test_pointpillars_tf():

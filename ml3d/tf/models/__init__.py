@@ -12,9 +12,3 @@ __all__ = [
     'RandLANet', 'KPFCNN', 'PointPillars', 'SparseConvUnet', 'PointRCNN',
     'PointTransformer', 'PVCNN'
 ]
-
-try:
-    from .openvino_model import OpenVINOModel
-    __all__.append("OpenVINOModel")
-except Exception:
-    pass

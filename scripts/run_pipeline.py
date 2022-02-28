@@ -4,7 +4,6 @@ import logging
 import sys
 import yaml
 import pprint
-import os
 
 from pathlib import Path
 
@@ -68,8 +67,6 @@ def main():
     if framework == 'torch':
         import open3d.ml.torch as ml3d
     else:
-        os.environ[
-            'TF_CPP_MIN_LOG_LEVEL'] = '1'  # Disable INFO messages from tf
         import tensorflow as tf
         import open3d.ml.tf as ml3d
 
