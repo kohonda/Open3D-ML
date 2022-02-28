@@ -522,6 +522,7 @@ class RandLANet(BaseModel):
 
         m_conv2d = getattr(self, 'decoder_0')
         feature = m_conv2d(f_encoder_list[-1])
+        # print("feature size: ", feature.shape)
 
         # Decoder
         f_decoder_list = []
@@ -539,21 +540,26 @@ class RandLANet(BaseModel):
 
         m_conv2d = getattr(self, 'fc1')
         f_layer_fc1 = m_conv2d(f_decoder_list[-1])
+        # print("f_layer_fc1 size: ", f_layer_fc1.shape)
 
         m_conv2d = getattr(self, 'fc2')
         f_layer_fc2 = m_conv2d(f_layer_fc1)
+        # print("f_layer_fc2 size: ", f_layer_fc2.shape)
 
         # print("size ", f_layer_fc2.shape)
         # このf_layer_fc2を取得すれば良さそう
 
         f_layer_drop = self.m_dropout(f_layer_fc2)
+        # print("f_layer_drop size: ", f_layer_drop.shape)
 
         test_hidden = f_layer_fc2.permute(0, 2, 3, 1)
 
         m_conv2d = getattr(self, 'fc')
         f_layer_fc3 = m_conv2d(f_layer_drop)
+        # print("f_layer_fc3 size: ", f_layer_fc3.shape)
 
         f_out = f_layer_fc3.squeeze(3).transpose(1, 2)
+        # print("f_out size: ", f_out.shape)
 
         # TODO こうすることで取り出せる
         return f_out, f_layer_fc2

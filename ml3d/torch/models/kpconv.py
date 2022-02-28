@@ -1,24 +1,22 @@
-import time
 import math
+import time
+
 import torch
 import torch.nn as nn
-
-from tqdm import tqdm
-from torch.nn.parameter import Parameter
-from torch.nn.init import kaiming_uniform_
-from sklearn.neighbors import KDTree
-
 from open3d.ml.contrib import subsample_batch
 from open3d.ml.torch.layers import FixedRadiusSearch
 from open3d.ml.torch.ops import ragged_to_dense
+from sklearn.neighbors import KDTree
+from torch.nn.init import kaiming_uniform_
+from torch.nn.parameter import Parameter
+from tqdm import tqdm
 
+from ...datasets.utils import (DataProcessing, create_3D_rotations,
+                               trans_augment, trans_crop_pc, trans_normalize)
+from ...utils import MODEL
+from ..modules.losses import filter_valid_label
 # use relative import for being compatible with Open3d main repo
 from .base_model import BaseModel
-from ..modules.losses import filter_valid_label
-from ...utils import MODEL
-
-from ...datasets.utils import (DataProcessing, trans_normalize, trans_augment,
-                               trans_crop_pc, create_3D_rotations)
 
 
 class bcolors:  # See https://stackoverflow.com/questions/287871
@@ -1529,11 +1527,12 @@ class MaxPoolBlock(nn.Module):
 
 # Import numpy package and name it "np"
 import time
-import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib import cm
 from os import makedirs
-from os.path import join, exists
+from os.path import exists, join
+
+import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib import cm
 
 # ------------------------------------------------------------------------------------------
 #

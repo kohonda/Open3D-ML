@@ -7,12 +7,14 @@ import numpy as np
 # ml3dをinclude
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
+import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 import open3d
 # from ml3d.vis import Visualizer
 import open3d.ml.torch as ml3d_pip
 import scipy.spatial as ss
 from ml3d.datasets import SemanticKITTI
-from ml3d.torch.models import RandLANet
+from ml3d.torch.models import KPFCNN, RandLANet
 from ml3d.torch.pipelines import SemanticSegmentation
 from ml3d.utils.config import Config
 from sklearn.decomposition import PCA
@@ -29,6 +31,7 @@ def coloring_similar_feature_points(points, features, target_point_idx_list, col
     
     for target_point_idx in target_point_idx_list:
         tree = ss.KDTree(features)
+        print(features[target_point_idx])
         _, index = tree.query(features[target_point_idx], coloring_points_num)
     
         color = gen_random_color()
@@ -66,10 +69,12 @@ def pick_points(pcd):
 
 if __name__ == "__main__":
     cfg_file = "ml3d/configs/randlanet_semantickitti.yml"
+    # cfg_file = "ml3d/configs/kpconv_semantickitti.yml"
     cfg = Config.load_from_file(cfg_file)
     example_dir = os.path.dirname(os.path.realpath(__file__))
 
     model = RandLANet(**cfg.model)
+    # model = KPFCNN(**cfg.model)
     cfg.dataset['dataset_path'] = "/media/honda/ssd/kitti_data/data_odometry_velodyne"
 
     dataset = SemanticKITTI(cfg.dataset.pop('dataset_path', None), **cfg.dataset)
@@ -78,6 +83,7 @@ if __name__ == "__main__":
     # download the weights.
 
     ckpt_path = example_dir + "/vis_weights_{}.pth".format('RandLANet')
+    # ckpt_path = example_dir + "/vis_weights_{}.pth".format('KPFCNN')
 
 
     # load the parameters.
@@ -100,6 +106,24 @@ if __name__ == "__main__":
     features = features[:, :, 0]
     print("features size: ", features.shape)
 
+    pca = PCA(n_components=3)
+    compressed_features = pca.fit_transform(features)
+    print("Raw features shape: ", features.shape)
+    print("compressed features size: ", compressed_features.shape)
+    # 寄与率
+    print("explained variance ratio: ", pca.explained_variance_ratio_)
+    print("accumulated variance ratio: ", pca.explained_variance_ratio_.sum())
+
+    is_save_variance_ratio = False
+    if is_save_variance_ratio:
+        plt.gca().get_xaxis().set_major_locator(ticker.MaxNLocator(integer=True))
+        plt.plot([0] + list( np.cumsum(pca.explained_variance_ratio_)), "-o")
+        plt.xlabel("Number of principal components")
+        plt.ylabel("Cumulative contribution rate")
+        plt.grid()
+        # plt.savefig('features_variance_ratio.png')
+        # plt.show()
+
     pred_label = (result['predict_labels'] + 1).astype(np.int32)
     # Fill "unlabeled" value because predictions have no 0 values.
     pred_label[0] = 0
@@ -115,16 +139,17 @@ if __name__ == "__main__":
     picked_points_index =  pick_points(pcd)
     print("picked points: ", picked_points_index)
 
-    # visualize colored by features
-    nearest_points_num = 100
-    points_colors = coloring_similar_feature_points(data['point'], features , picked_points_index, nearest_points_num)
-    
-    pcd.colors = open3d.utility.Vector3dVector(points_colors)
-    open3d.visualization.draw_geometries([pcd])
-
     # visualize colored by labels
     points_colors = coloring_same_label_points(data['point'], pred_label, picked_points_index)
     pcd.colors = open3d.utility.Vector3dVector(points_colors)
     open3d.visualization.draw_geometries([pcd])
+
+    # visualize colored by features
+    nearest_points_num = 100
+    points_colors = coloring_similar_feature_points(data['point'], features , picked_points_index, nearest_points_num)
+    pcd.colors = open3d.utility.Vector3dVector(points_colors)
+    open3d.visualization.draw_geometries([pcd])
+
+    
 
 
