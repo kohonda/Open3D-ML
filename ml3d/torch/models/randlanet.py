@@ -16,25 +16,26 @@
 # https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode
 # ----------------------------------------------------------------------------
 
+import time
+from pathlib import Path
+
+import numpy as np
 import torch
 import torch.nn as nn
-import numpy as np
-import time
+from sklearn.neighbors import KDTree
+from torch.utils.data import (BatchSampler, DataLoader, Dataset,
+                              IterableDataset, Sampler)
+from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
-from pathlib import Path
-from sklearn.neighbors import KDTree
-from torch.utils.tensorboard import SummaryWriter
-from torch.utils.data import Dataset, IterableDataset, DataLoader, Sampler, BatchSampler
-
-# use relative import for being compatible with Open3d main repo
-from .base_model import BaseModel
-from ..utils import helper_torch
+from ...datasets.utils import (DataProcessing, trans_augment, trans_crop_pc,
+                               trans_normalize)
+from ...utils import MODEL
 from ..dataloaders import DefaultBatcher
 from ..modules.losses import filter_valid_label
-from ...datasets.utils import (DataProcessing, trans_normalize, trans_augment,
-                               trans_crop_pc)
-from ...utils import MODEL
+from ..utils import helper_torch
+# use relative import for being compatible with Open3d main repo
+from .base_model import BaseModel
 
 
 class RandLANet(BaseModel):
@@ -50,7 +51,7 @@ class RandLANet(BaseModel):
             name='RandLANet',
             k_n=16,  # KNN,
             num_layers=4,  # Number of layers
-            num_points=4096 * 11,  # Number of input points
+            num_points=4096 * 11,  # Number of input points → このサイズのfeaturesが出てきている
             num_classes=19,  # Number of valid classes
             ignored_label_inds=[0],
             sub_sampling_ratio=[4, 4, 4, 4],
@@ -525,6 +526,9 @@ class RandLANet(BaseModel):
         m_conv2d = getattr(self, 'fc2')
         f_layer_fc2 = m_conv2d(f_layer_fc1)
 
+        # print("size ", f_layer_fc2.shape)
+        # このf_layer_fc2を取得すれば良さそう
+
         f_layer_drop = self.m_dropout(f_layer_fc2)
 
         test_hidden = f_layer_fc2.permute(0, 2, 3, 1)
@@ -534,7 +538,8 @@ class RandLANet(BaseModel):
 
         f_out = f_layer_fc3.squeeze(3).transpose(1, 2)
 
-        return f_out
+        # TODO こうすることで取り出せる
+        return f_out, f_layer_fc2
 
     @staticmethod
     def random_sample(feature, pool_idx):

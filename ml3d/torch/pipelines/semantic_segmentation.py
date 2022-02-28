@@ -1,23 +1,24 @@
 import logging
+from datetime import datetime
 from os.path import exists, join
 from pathlib import Path
-from datetime import datetime
 
 import numpy as np
-from tqdm import tqdm
 import torch
-from torch.utils.tensorboard import SummaryWriter
-from torch.utils.data import DataLoader
-
 # pylint: disable-next=unused-import
 from open3d.visualization.tensorboard_plugin import summary
-from .base_pipeline import BasePipeline
-from ..dataloaders import get_sampler, TorchDataloader, DefaultBatcher, ConcatBatcher
-from ..utils import latest_torch_ckpt
+from torch.utils.data import DataLoader
+from torch.utils.tensorboard import SummaryWriter
+from tqdm import tqdm
+
+from ...datasets import InferenceDummySplit
+from ...utils import PIPELINE, code2md, get_runid, make_dir
+from ..dataloaders import (ConcatBatcher, DefaultBatcher, TorchDataloader,
+                           get_sampler)
 from ..modules.losses import SemSegLoss, filter_valid_label
 from ..modules.metrics import SemSegMetric
-from ...utils import make_dir, PIPELINE, get_runid, code2md
-from ...datasets import InferenceDummySplit
+from ..utils import latest_torch_ckpt
+from .base_pipeline import BasePipeline
 
 log = logging.getLogger(__name__)
 
@@ -159,24 +160,26 @@ class SemanticSegmentation(BasePipeline):
 
         with torch.no_grad():
             for unused_step, inputs in enumerate(infer_loader):
-                results = model(inputs['data'])
-                self.update_tests(infer_sampler, inputs, results)
+                results, features = model(inputs['data'])
+                # print(features)
+                # self.update_tests(infer_sampler, inputs, results)
 
         inference_result = {
-            'predict_labels': self.ori_test_labels.pop(),
-            'predict_scores': self.ori_test_probs.pop()
+            # 'predict_labels': self.ori_test_labels.pop(),
+            # 'predict_scores': self.ori_test_probs.pop(),
+            'features': features
         }
 
-        metric = SemSegMetric()
+        # metric = SemSegMetric()
 
-        valid_scores, valid_labels = filter_valid_label(
-            torch.tensor(inference_result['predict_scores']),
-            torch.tensor(data['label']), model.cfg.num_classes,
-            model.cfg.ignored_label_inds, device)
+        # valid_scores, valid_labels = filter_valid_label(
+        #     torch.tensor(inference_result['predict_scores']),
+        #     torch.tensor(data['label']), model.cfg.num_classes,
+        #     model.cfg.ignored_label_inds, device)
 
-        metric.update(valid_scores, valid_labels)
-        log.info(f"Accuracy : {metric.acc()}")
-        log.info(f"IoU : {metric.iou()}")
+        # metric.update(valid_scores, valid_labels)
+        # log.info(f"Accuracy : {metric.acc()}")
+        # log.info(f"IoU : {metric.iou()}")
 
         return inference_result
 
