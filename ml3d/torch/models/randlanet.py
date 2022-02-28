@@ -126,6 +126,9 @@ class RandLANet(BaseModel):
 
         self.m_dropout = nn.Dropout(0.5)
 
+    def set_raw_points_num(self, points_num):
+        self.raw_points_num = points_num
+
     def get_optimizer(self, cfg_pipeline):
         optimizer = torch.optim.Adam(self.parameters(),
                                      lr=cfg_pipeline.adam_lr,
@@ -180,12 +183,24 @@ class RandLANet(BaseModel):
         feat = data['feat'].copy() if data['feat'] is not None else None
         tree = data['search_tree']
 
+        # pc, selected_idxs, center_point = self.trans_point_sampler(
+        #     pc=pc,
+        #     feat=feat,
+        #     label=label,
+        #     search_tree=tree,
+        #     num_points=self.cfg.num_points)
+
+        # TODO: ここを変えるとfeatureのサイズが変わるが...
+        # num_point = pc.shape[0]
+        # num_point = self.inference_ori_data['point'].shape[0]
+        # print('num_point', num_point)
         pc, selected_idxs, center_point = self.trans_point_sampler(
             pc=pc,
             feat=feat,
             label=label,
             search_tree=tree,
-            num_points=self.cfg.num_points)
+            num_points=self.raw_points_num)
+      
 
         label = label[selected_idxs]
 
@@ -235,11 +250,14 @@ class RandLANet(BaseModel):
         inputs['labels'] = label.astype(np.int64)
         return inputs
 
+    # この関数は呼ばれていない？
     def inference_begin(self, data):
         self.test_smooth = 0.95
         attr = {'split': 'test'}
         self.inference_ori_data = data
         self.inference_data = self.preprocess(data, attr)
+        # self.inference_data = data
+        print('inference_data', self.inference_data['point'].shape)
         self.inference_proj_inds = self.inference_data['proj_inds']
         num_points = self.inference_data['search_tree'].data.shape[0]
         self.possibility = self.rng.random(num_points) * 1e-3
@@ -252,6 +270,7 @@ class RandLANet(BaseModel):
     def inference_preprocess(self):
         min_possibility_idx = np.argmin(self.possibility)
         attr = {'split': 'test'}
+        # print("size :" , self.inference_data['point'].shape)
         data = self.transform(self.inference_data, attr, min_possibility_idx)
         inputs = {'data': data, 'attr': attr}
         inputs = self.batcher.collate_fn([inputs])

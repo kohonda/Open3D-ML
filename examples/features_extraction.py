@@ -33,14 +33,11 @@ ckpt_path = example_dir + "/vis_weights_{}.pth".format('RandLANet')
 pipeline.load_ckpt(ckpt_path=ckpt_path)
 
 data_split = dataset.get_split("train")
-data = data_split.get_data(100)
 
-# print(data['point'].shape)
-
-# run inference on a single example.
-# returns dict with 'predict_labels' and 'predict_scores'.
-result = pipeline.run_inference(data)
-
+data = data_split.get_data(10)
+pipeline.model.set_raw_points_num(data['point'].shape[0])
 print("data size: ", data['point'].shape)
+
+result = pipeline.run_inference(data)
 print("feature size: ", result['features'].shape)
 

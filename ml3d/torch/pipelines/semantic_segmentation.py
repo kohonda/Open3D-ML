@@ -158,6 +158,7 @@ class SemanticSegmentation(BasePipeline):
         self.ori_test_probs = []
         self.ori_test_labels = []
 
+
         with torch.no_grad():
             for unused_step, inputs in enumerate(infer_loader):
                 results, features = model(inputs['data'])
