@@ -31,7 +31,7 @@ def coloring_similar_feature_points(points, features, target_point_idx_list, col
     
     for target_point_idx in target_point_idx_list:
         tree = ss.KDTree(features)
-        print(features[target_point_idx])
+        # print(features[target_point_idx])
         _, index = tree.query(features[target_point_idx], coloring_points_num)
     
         color = gen_random_color()
@@ -96,15 +96,7 @@ if __name__ == "__main__":
     print("data size: ", data['point'].shape)
 
     result = pipeline.run_inference(data)
-    # torch to numpy
-    features = result['features'].cpu().numpy()
-    # 2要素目と3要素目を入れ替える
-    features = np.swapaxes(features, 1, 2)
-    # 2要素目と3要素目を抽出
-    features = features[0]
-    # [N, 32, 1] -> [N, 32]
-    features = features[:, :, 0]
-    print("features size: ", features.shape)
+    features = result['features']
 
     pca = PCA(n_components=3)
     compressed_features = pca.fit_transform(features)
@@ -124,9 +116,11 @@ if __name__ == "__main__":
         # plt.savefig('features_variance_ratio.png')
         # plt.show()
 
+    # Original
     pred_label = (result['predict_labels'] + 1).astype(np.int32)
-    # Fill "unlabeled" value because predictions have no 0 values.
     pred_label[0] = 0
+
+
     print("label size: ", pred_label.shape)
 
 

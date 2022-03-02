@@ -157,11 +157,10 @@ class RandLANet(BaseModel):
 
         return loss, labels, scores
 
-    def update_probs(self, inputs, results, test_probs, test_labels):
+    def update_probs(self, inputs, results, test_probs, test_labels, features , test_features):
         self.test_smooth = 0.95
 
         for b in range(results.size()[0]):
-
             result = torch.reshape(results[b], (-1, self.cfg.num_classes))
             probs = torch.nn.functional.softmax(result, dim=-1)
             probs = probs.cpu().data.numpy()
@@ -171,8 +170,12 @@ class RandLANet(BaseModel):
             test_probs[inds] = self.test_smooth * test_probs[inds] + (
                 1 - self.test_smooth) * probs
             test_labels[inds] = labels
+            
+            # feature = 32次元
+            feature = torch.reshape(features[b], (-1 ,32))
+            test_features[inds] = feature.cpu().data.numpy()
 
-        return test_probs, test_labels
+        return test_probs, test_labels, test_features
 
     def transform(self, data, attr, min_possibility_idx=None):
         cfg = self.cfg

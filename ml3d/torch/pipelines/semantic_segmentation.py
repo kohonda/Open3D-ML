@@ -1,4 +1,5 @@
 import logging
+from cgi import test
 from datetime import datetime
 from os.path import exists, join
 from pathlib import Path
@@ -155,32 +156,51 @@ class SemanticSegmentation(BasePipeline):
         self.curr_cloud_id = -1
         self.test_probs = []
         self.test_labels = []
+        self.test_features = []
         self.ori_test_probs = []
         self.ori_test_labels = []
+        self.ori_features = []
 
 
         with torch.no_grad():
             for unused_step, inputs in enumerate(infer_loader):
                 results, features = model(inputs['data'])
+                
+                # [1, 32, 121018, 1] -> [1, 121018, 32]
+                features = features.squeeze(0)
+                features = features.permute(2, 1, 0)
+                
+                # torch to numpy
+                # features = features.cpu().numpy()
+                # # 2要素目と3要素目を入れ替える
+                # features = np.swapaxes(features, 1, 2)
+                # # 2要素目と3要素目を抽出
+                # features = features[0]
+                # # [N, 32, 1] -> [N, 32]
+                # features = features[:, :, 0]
+
                 # print(features)
-                self.update_tests(infer_sampler, inputs, results)
+                self.update_tests(infer_sampler, inputs, results, features)
+
 
         inference_result = {
             'predict_labels': self.ori_test_labels.pop(),
             'predict_scores': self.ori_test_probs.pop(),
-            'features': features,
+            'features': self.ori_features.pop()
+            # 'predict_labels': self.test_probs.pop(),
+            # 'features': features
         }
 
-        metric = SemSegMetric()
+        # metric = SemSegMetric()
 
-        valid_scores, valid_labels = filter_valid_label(
-            torch.tensor(inference_result['predict_scores']),
-            torch.tensor(data['label']), model.cfg.num_classes,
-            model.cfg.ignored_label_inds, device)
+        # valid_scores, valid_labels = filter_valid_label(
+        #     torch.tensor(inference_result['predict_scores']),
+        #     torch.tensor(data['label']), model.cfg.num_classes,
+        #     model.cfg.ignored_label_inds, device)
 
-        metric.update(valid_scores, valid_labels)
-        log.info(f"Accuracy : {metric.acc()}")
-        log.info(f"IoU : {metric.iou()}")
+        # metric.update(valid_scores, valid_labels)
+        # log.info(f"Accuracy : {metric.acc()}")
+        # log.info(f"IoU : {metric.iou()}")
 
         return inference_result
 
@@ -250,7 +270,7 @@ class SemanticSegmentation(BasePipeline):
 
         log.info("Finished testing")
 
-    def update_tests(self, sampler, inputs, results):
+    def update_tests(self, sampler, inputs, results, features):
         """Update tests using sampler, inputs, and results."""
         split = sampler.split
         end_threshold = 0.5
@@ -266,18 +286,23 @@ class SemanticSegmentation(BasePipeline):
                          dtype=np.float16))
             self.test_labels.append(np.zeros(shape=[num_points],
                                              dtype=np.int16))
+            
+            # 32次元のnumpy配列を作
+            self.test_features.append(np.zeros(shape=[num_points, 32]))
             self.complete_infer = False
 
         this_possiblility = sampler.possibilities[sampler.cloud_id]
+
         self.pbar.update(
             this_possiblility[this_possiblility > end_threshold].shape[0] -
             self.pbar_update)
+        
         self.pbar_update = this_possiblility[
             this_possiblility > end_threshold].shape[0]
-        self.test_probs[self.curr_cloud_id], self.test_labels[
-            self.curr_cloud_id] = self.model.update_probs(
+        
+        self.test_probs[self.curr_cloud_id], self.test_labels[self.curr_cloud_id], self.test_features[self.curr_cloud_id] = self.model.update_probs(
                 inputs, results, self.test_probs[self.curr_cloud_id],
-                self.test_labels[self.curr_cloud_id])
+                self.test_labels[self.curr_cloud_id], features, self.test_features[self.curr_cloud_id])
 
         if (split in ['test'] and
                 this_possiblility[this_possiblility > end_threshold].shape[0]
@@ -294,6 +319,8 @@ class SemanticSegmentation(BasePipeline):
                 self.test_probs[self.curr_cloud_id][proj_inds])
             self.ori_test_labels.append(
                 self.test_labels[self.curr_cloud_id][proj_inds])
+            self.ori_features.append(self.test_features[self.curr_cloud_id][proj_inds])
+            # self.ori_features.append(features[proj_inds])
             self.complete_infer = True
 
     def run_train(self):
