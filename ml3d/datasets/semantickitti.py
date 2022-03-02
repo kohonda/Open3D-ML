@@ -1,14 +1,17 @@
-import numpy as np
-import os, argparse, pickle, sys
-from os.path import exists, join, isfile, dirname, abspath, split
+import argparse
 import logging
+import os
+import pickle
+import sys
+from os.path import abspath, dirname, exists, isfile, join, split
 
-from sklearn.neighbors import KDTree
+import numpy as np
 import yaml
+from sklearn.neighbors import KDTree
 
+from ..utils import DATASET, make_dir
 from .base_dataset import BaseDataset, BaseDatasetSplit
 from .utils import DataProcessing
-from ..utils import make_dir, DATASET
 
 log = logging.getLogger(__name__)
 
@@ -285,6 +288,35 @@ class SemanticKITTISplit(BaseDatasetSplit):
             'feat': None,
             'label': labels,
         }
+
+        return data
+    
+    def get_data_size(self, sequence):
+        pc_path = join(self.dataset.cfg.dataset_path, 'dataset', 'sequences', sequence, 'velodyne')
+        return len(os.listdir(pc_path))
+
+    def get_data_sequence(self, sequence, idx):
+        pc_path = join(self.dataset.cfg.dataset_path, 'dataset', 'sequences',
+                       sequence, 'velodyne', '{:06d}.bin'.format(idx))
+        points = DataProcessing.load_pc_kitti(pc_path)
+
+        dir, file = split(pc_path)
+        label_path = join(dir, '../labels', file[:-4] + '.label')
+        if not exists(label_path):
+            labels = np.zeros(np.shape(points)[0], dtype=np.int32)
+            if self.split not in ['test', 'all']:
+                raise FileNotFoundError(f' Label file {label_path} not found')
+
+        else:
+            labels = DataProcessing.load_label_kitti(
+                label_path, self.remap_lut_val).astype(np.int32)
+
+        data = {
+            'point': points[:, 0:3],
+            'feat': None,
+            'label': labels,
+        }
+
 
         return data
 

@@ -69,6 +69,7 @@ def pick_points(pcd):
 
 if __name__ == "__main__":
     cfg_file = "ml3d/configs/randlanet_semantickitti.yml"
+    # cfg_file = "ml3d/configs/kpconv_semantickitti.yml"
     cfg = Config.load_from_file(cfg_file)
     example_dir = os.path.dirname(os.path.realpath(__file__))
 
@@ -82,45 +83,66 @@ if __name__ == "__main__":
     # download the weights.
 
     ckpt_path = example_dir + "/vis_weights_{}.pth".format('RandLANet')
+    # ckpt_path = example_dir + "/vis_weights_{}.pth".format('KPFCNN')
+
 
     # load the parameters.
     pipeline.load_ckpt(ckpt_path=ckpt_path)
+
     data_split = dataset.get_split("train")
 
-    # Output setup
-    output_root = "/media/honda/ssd/kitti_data/features/randlanet"
+    data = data_split.get_data(10)
+    pipeline.model.set_raw_points_num(data['point'].shape[0])
+    print("data size: ", data['point'].shape)
 
-    sequence_list  = ["00", "01", "02", "03", "04", "05", "06", "07", "08", "09", "10"]
-    
-    for sequence in sequence_list:
-        print("sequence: ", sequence)
+    result = pipeline.run_inference(data)
+    features = result['features']
 
-        output_dir = os.path.join(output_root, sequence)
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
-        print("output_dir: ", output_dir)
+    pca = PCA(n_components=15)
+    compressed_features = pca.fit_transform(features)
+    print("Raw features shape: ", features.shape)
+    print("compressed features size: ", compressed_features.shape)
+    # 寄与率
+    print("explained variance ratio: ", pca.explained_variance_ratio_)
+    print("accumulated variance ratio: ", pca.explained_variance_ratio_.sum())
 
-        data_size = data_split.get_data_size(sequence)
-        
-        for idx in range(data_size):
-            data= data_split.get_data_sequence(sequence, idx)
-            result = pipeline.run_inference(data)
-            features = result['features']
+    is_save_variance_ratio = True
+    if is_save_variance_ratio:
+        plt.gca().get_xaxis().set_major_locator(ticker.MaxNLocator(integer=True))
+        plt.plot([0] + list( np.cumsum(pca.explained_variance_ratio_)), "-o")
+        plt.xlabel("Number of principal components")
+        plt.ylabel("Cumulative contribution rate")
+        plt.grid()
+        # plt.savefig('features_variance_ratio.png')
+        # plt.show()
 
-            pca = PCA(n_components=12)
-            compressed_features = pca.fit_transform(features)
-
-            # save features
-            file_name = '{:06d}'.format(idx)
-            output_file = os.path.join(output_dir, "{}.txt".format(file_name))
-            np.savetxt(output_file, compressed_features, fmt="%.6f")
-
-
-        
+    # Original
+    pred_label = (result['predict_labels'] + 1).astype(np.int32)
+    pred_label[0] = 0
 
 
+    print("label size: ", pred_label.shape)
 
-    
+
+    # visualize
+    pcd = open3d.geometry.PointCloud()
+    pcd.points = open3d.utility.Vector3dVector(data['point'])
+    points_colors = np.zeros((len(data['point']), 3)) # Black
+    pcd.colors = open3d.utility.Vector3dVector(points_colors)
+
+    picked_points_index =  pick_points(pcd)
+    print("picked points: ", picked_points_index)
+
+    # visualize colored by labels
+    points_colors = coloring_same_label_points(data['point'], pred_label, picked_points_index)
+    pcd.colors = open3d.utility.Vector3dVector(points_colors)
+    open3d.visualization.draw_geometries([pcd])
+
+    # visualize colored by features
+    nearest_points_num = 100
+    points_colors = coloring_similar_feature_points(data['point'], compressed_features , picked_points_index, nearest_points_num)
+    pcd.colors = open3d.utility.Vector3dVector(points_colors)
+    open3d.visualization.draw_geometries([pcd])
 
     
 
