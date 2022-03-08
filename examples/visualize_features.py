@@ -139,7 +139,7 @@ if __name__ == "__main__":
     open3d.visualization.draw_geometries([pcd])
 
     # visualize colored by features
-    nearest_points_num = 100
+    nearest_points_num = 300
     points_colors = coloring_similar_feature_points(data['point'], compressed_features , picked_points_index, nearest_points_num)
     pcd.colors = open3d.utility.Vector3dVector(points_colors)
     open3d.visualization.draw_geometries([pcd])

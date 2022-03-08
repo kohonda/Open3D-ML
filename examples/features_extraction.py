@@ -91,6 +91,7 @@ if __name__ == "__main__":
     output_root = "/media/honda/ssd/kitti_data/features/randlanet"
 
     sequence_list  = ["00", "01", "02", "03", "04", "05", "06", "07", "08", "09", "10"]
+    # sequence_list  = ["05", "07", "09", "06", "08", "10"]
     
     for sequence in sequence_list:
         print("sequence: ", sequence)
@@ -103,6 +104,14 @@ if __name__ == "__main__":
         data_size = data_split.get_data_size(sequence)
         
         for idx in range(data_size):
+            print("sequence; ", sequence , " | progress: ", idx, "/", data_size)
+
+            # output file
+            file_name = '{:06d}'.format(idx)
+            output_file = os.path.join(output_dir, "{}.txt".format(file_name))
+            if os.path.exists(output_file):
+                continue
+            
             data= data_split.get_data_sequence(sequence, idx)
             result = pipeline.run_inference(data)
             features = result['features']
@@ -111,8 +120,6 @@ if __name__ == "__main__":
             compressed_features = pca.fit_transform(features)
 
             # save features
-            file_name = '{:06d}'.format(idx)
-            output_file = os.path.join(output_dir, "{}.txt".format(file_name))
             np.savetxt(output_file, compressed_features, fmt="%.6f")
 
 

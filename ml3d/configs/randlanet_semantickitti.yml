@@ -31,7 +31,7 @@ model:
   k_n: 16
   num_classes: 19
   num_layers: 4
-  # num_points: 121018
+  # num_points: 150000
   num_points: 45056
   sub_sampling_ratio:
   - 4

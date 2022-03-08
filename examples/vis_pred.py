@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 import logging
-import open3d.ml.torch as ml3d  # just switch to open3d.ml.tf for tf usage
-import numpy as np
 import os
 import sys
-from os.path import exists, join, dirname
+from os.path import dirname, exists, join
+
+import numpy as np
+import open3d.ml.torch as ml3d  # just switch to open3d.ml.tf for tf usage
 
 from util import ensure_demo_data
 
@@ -17,8 +18,8 @@ def get_custom_data(pc_names, path):
 
     pc_data = []
     for i, name in enumerate(pc_names):
-        pc_path = join(path, 'points', name + '.npy')
-        label_path = join(path, 'labels', name + '.npy')
+        pc_path = join(path, 'SemanticKITTI/points', name + '.npy')
+        label_path = join(path, 'SemanticKITTI/labels', name + '.npy')
         point = np.load(pc_path)[:, 0:3]
         label = np.squeeze(np.load(label_path))
 
@@ -41,6 +42,8 @@ def pred_custom_data(pc_names, pcs, pipeline_r, pipeline_k):
         pred_label_r = (results_r['predict_labels'] + 1).astype(np.int32)
         # Fill "unlabeled" value because predictions have no 0 values.
         pred_label_r[0] = 0
+
+        print("label size: ", pred_label_r.shape)
 
         results_k = pipeline_k.run_inference(data)
         pred_label_k = (results_k['predict_labels'] + 1).astype(np.int32)
